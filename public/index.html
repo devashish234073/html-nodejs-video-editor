@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Duration & Frame Extractor</title>
+    <style>
+        #videoElement {
+            width: 640px;
+            height: 360px;
+            object-fit: cover;
+        }
+
+        #imageContainer {
+            display: inline-block;
+            white-space: nowrap;
+            overflow-x: auto;
+            border: 2px solid black;
+            width: 100%;
+            padding: 10px;
+        }
+
+        .image-item {
+            margin-right: 10px;
+            vertical-align: top;
+            width: 64px;
+            height: auto;
+        }
+
+        #scrollableSection {
+            overflow-x: scroll;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Upload Video and Get Duration</h1>
+    <input type="file" id="videoInput" accept="video/*">
+    <br><br>
+    <video id="videoElement" controls></video>
+    <br><br>
+    <div>
+        <label for="timestampInput">Enter Timestamp (seconds): </label>
+        <input type="number" id="timestampInput" min="0">
+        <button onclick="getFrame()">Get Frame</button>
+    </div>
+    <canvas id="frameCanvas" style="display: none;"></canvas>
+    <br><br>
+    <img id="frameImage" alt="Frame" width="64px" height="36px" style="border: 1px solid black;">
+    <div id="scrollableSection"></div>
+    <div id="imageContainer"></div>
+    </div>
+    <br><br>
+    <p>Video Duration: <span id="videoDuration"></span> seconds</p>
+
+    <script>
+        function $(selector) {
+            return document.querySelector(selector);
+        }
+        const videoInput = $('#videoInput');
+        const videoElement = $('#videoElement');
+        const videoDurationDisplay = $('#videoDuration');
+        const frameCanvas = $('#frameCanvas');
+        const frameImage = $('#frameImage');
+
+        videoInput.addEventListener('change', function (event) {
+            const file = event.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                videoElement.src = url;
+                videoElement.addEventListener('loadedmetadata', () => {
+                    videoDurationDisplay.textContent = videoElement.duration;
+                    loadFramesEveryNSeconds(0.5);
+                });
+            }
+        });
+
+        async function loadFramesEveryNSeconds(N) {
+            const videoElement = $('#videoElement');
+
+            if (!videoElement || videoElement.readyState < 1) {
+                alert('Please upload a video first.');
+                return;
+            }
+            const imageContainer = $('#imageContainer');
+            for (let t = 0; t < videoElement.duration; t += N) {
+                try {
+                    await getFrameAtTimestamp(t, function (imgUrl) {
+                        let img = document.createElement('img');
+                        img.src = imgUrl;
+                        img.className = 'image-item';
+                        imageContainer.appendChild(img);
+                    });
+                } catch (e) {
+                    console.error(e,e);
+                }
+            }
+        }
+
+        function getFrame() {
+            const timestamp = $('#timestampInput').value;
+            getFrameAtTimestamp(timestamp, function (imgUrl) {
+                frameImage.src = imgUrl;
+            });
+        }
+
+        async function getFrameAtTimestamp(timestamp, callback) {
+            if (timestamp < 0 || timestamp > videoElement.duration) {
+                alert('Please enter a valid timestamp within the video duration.');
+                return;
+            }
+            return new Promise((resolve, reject) => {
+                videoElement.currentTime = timestamp;
+
+                videoElement.addEventListener('seeked', function captureFrame() {
+                    const ctx = frameCanvas.getContext('2d');
+                    frameCanvas.width = videoElement.videoWidth;
+                    frameCanvas.height = videoElement.videoHeight;
+                    ctx.drawImage(videoElement, 0, 0, videoElement.videoWidth, videoElement.videoHeight);
+                    const dataURL = frameCanvas.toDataURL('image/png');
+                    if (callback) {
+                        callback(dataURL);
+                        resolve("done");
+                    } else {
+                        resolve("done");
+                    }
+                    frameCanvas.style.display = 'none';
+
+                    videoElement.removeEventListener('seeked', captureFrame);
+                }, { once: true });
+            });
+        }
+    </script>
+</body>
+
+</html>
