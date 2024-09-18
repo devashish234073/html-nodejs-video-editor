@@ -6,6 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Video Duration & Frame Extractor</title>
     <style>
+        body {
+            background-color: black;
+            color: white;
+            padding-left: 20px;
+            padding-right: 20px;
+        }
         #videoElement {
             width: 640px;
             height: 360px;
@@ -22,42 +28,45 @@
         }
 
         .image-item {
-            margin-right: 10px;
+            margin-right: 1px;
             vertical-align: top;
             width: 64px;
             height: auto;
         }
 
         #scrollableSection {
+            display: none;
             overflow-x: scroll;
             white-space: nowrap;
+        }
+
+        #duration {
+            display: none;
+            font-size: 10px;
         }
     </style>
 </head>
 
 <body>
-    <h1>Upload Video and Get Duration</h1>
+    <h1>Video Editor</h1>
     <input type="file" id="videoInput" accept="video/*">
     <br><br>
     <video id="videoElement" controls></video>
     <br><br>
-    <div>
-        <label for="timestampInput">Enter Timestamp (seconds): </label>
-        <input type="number" id="timestampInput" min="0">
-        <button onclick="getFrame()">Get Frame</button>
-    </div>
+    <p id="duration">Video Duration: <span id="videoDuration"></span> seconds</p>
     <canvas id="frameCanvas" style="display: none;"></canvas>
     <br><br>
     <img id="frameImage" alt="Frame" width="64px" height="36px" style="border: 1px solid black;">
     <div id="scrollableSection"></div>
     <div id="imageContainer"></div>
     </div>
-    <br><br>
-    <p>Video Duration: <span id="videoDuration"></span> seconds</p>
 
     <script>
         function $(selector) {
             return document.querySelector(selector);
+        }
+        function _(tag) {
+            return document.createElement(tag);
         }
         const videoInput = $('#videoInput');
         const videoElement = $('#videoElement');
@@ -72,6 +81,8 @@
                 videoElement.src = url;
                 videoElement.addEventListener('loadedmetadata', () => {
                     videoDurationDisplay.textContent = videoElement.duration;
+                    $("#duration").style.display = "block";
+                    $("#scrollableSection").style.display = "block";
                     loadFramesEveryNSeconds(0.5);
                 });
             }
@@ -88,7 +99,14 @@
             for (let t = 0; t < videoElement.duration; t += N) {
                 try {
                     await getFrameAtTimestamp(t, function (imgUrl) {
-                        let img = document.createElement('img');
+                        let img = _('img');
+                        img.setAttribute("id","time_"+t);
+                        img.addEventListener("click",(evt)=>{
+                            let id = evt.target.getAttribute("id");
+                            if(id) {
+                                getFrameAtTimestamp(id.replace("time_",""));
+                            }
+                        });
                         img.src = imgUrl;
                         img.className = 'image-item';
                         imageContainer.appendChild(img);
